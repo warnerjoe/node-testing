@@ -1,0 +1,1 @@
+This is a simple Node API server using MVC architecture and Jest for Unit testing.
