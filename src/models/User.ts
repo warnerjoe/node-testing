@@ -4,6 +4,8 @@ interface IUser {
     email: string;
     username: string;
     password: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const UserSchema = new Schema<IUser>(
