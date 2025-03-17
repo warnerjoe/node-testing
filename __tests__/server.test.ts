@@ -1,5 +1,5 @@
-import { startServer } from "../server";
-import app from "../app";
+import { startServer } from "../src/server";
+import app from "../src/app";
 import http from "http";
 import mongoose from "mongoose";
 
