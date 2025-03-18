@@ -1,4 +1,4 @@
-import User from '../../models/User';
+import User from '../../src/models/User';
 
 describe("User Model - Valid User", () => {
   it("should save a valid user successfully", async () => {

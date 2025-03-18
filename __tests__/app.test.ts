@@ -1,5 +1,5 @@
 import request from 'supertest';
-import app from '../app';
+import app from '../src/app';
 
 describe("App Routes", () => {
     test("GET / should return 'Hello world!'", async () => {
