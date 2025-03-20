@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "ts-node src/server.ts",
+    "start": "ts-node src/server.ts -w",
     "build": "tsc",
     "serve": "node dist/server.js",
     "test": "jest --watchAll"
