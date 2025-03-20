@@ -5,13 +5,10 @@ import { Server }            from 'http';
 import mongoose, { connect } from 'mongoose';
 import path                  from 'path';
 
-// import { userRoutes } from './routes/usersRoutes'
-
 dotenv.config({ path: path.resolve(__dirname, 'config/.env') });
 
 app.use(express.json());
 
-// app.use("/users", userRoutes);
 export const startServer = async(): Promise<Server> => {
     try {
         await mongoose.connect(process.env.MONGO_URI as string, { dbName: "dev_db" });
