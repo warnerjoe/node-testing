@@ -12,6 +12,6 @@ describe("User Model - Valid User", () => {
     expect(savedUser._id).toBeDefined();
     expect(savedUser.email).toBe("test@example.com");
     expect(savedUser.createdAt).toBeDefined();
-    expect(savedUser.updatedAt).toBeDefined();
+    expect(savedUser.updatedAt).toBeDefined()
   });
 });
