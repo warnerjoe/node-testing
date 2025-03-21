@@ -3,7 +3,6 @@ import usersRouter from './routes/usersRoutes';
 
 const app = express();
 
-// Define routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); 
 

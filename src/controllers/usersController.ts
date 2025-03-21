@@ -44,7 +44,7 @@ const registerUser: RequestHandler<{}, {}, UserBody> = async (req, res, next) =>
     if (error instanceof Error) {
       res.status(500).json({ error: error.message });
     } else {
-      res.status(500).json({ error: 'An unknown error occurred.' });
+      res.status(500).json({ error: 'JWT failed' });
     }
   }
 };
@@ -83,4 +83,4 @@ const loginUser: RequestHandler<{}, {}, { email: string; password: string }> = a
   }
 };
 
-export { registerUser, loginUser };
+export { registerUser, loginUser, createToken};

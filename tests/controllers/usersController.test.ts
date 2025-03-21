@@ -1,11 +1,61 @@
+import jwt from 'jsonwebtoken';
+import { createToken } from '../../src/controllers/usersController';
+import bcrypt from 'bcryptjs';
+import User from '../../src/models/User';
+import * as usersController from '../../src/controllers/usersController';
+import { registerUser } from '../../src/controllers/usersController';
+import { mockRequest, mockResponse } from 'jest-mock-req-res';
+import { Request, Response } from 'express';
+
 /*****************************************
  JWT
  ****************************************/
- describe("Token creation logic", () => {
-    test.todo("JWT is called with the correct parameters");
-    test.todo("Token contains the correct payload (_id and expiration)");
-    test.todo("Handles jwt.sign throwing an error gracefully");
-})
+jest.mock('jsonwebtoken', () => ({
+    sign: jest.fn(() => 'mockedToken'),
+}));
+
+jest.mock('../../src/models/User');
+jest.mock('bcryptjs');
+
+describe("Token creation logic", () => {
+    test("JWT is called with the correct parameters", () => {
+        const mockId = '12345';
+        const jwtSecret = process.env.JWT_SECRET as string;
+
+        createToken(mockId);
+
+        expect(jwt.sign).toHaveBeenCalledWith(
+            { _id: mockId },
+            jwtSecret,
+            { expiresIn: '10d' }
+        );
+    });
+
+    test("Token contains the correct payload (_id and expiration)", () => {
+        const mockId = '12345';
+        const jwtSecret = process.env.JWT_SECRET as string;
+
+        createToken(mockId);
+
+        const signCall = (jwt.sign as jest.Mock).mock.calls[0];
+
+        const payload = signCall[0];
+        const options = signCall[2];
+
+        expect(payload).toEqual({ _id: mockId });
+
+        expect(options).toHaveProperty('expiresIn', '10d');
+    });
+
+    test("Handles jwt.sign throwing an error gracefully", () => {
+        const mockError = new Error('JWT failed');
+        (jwt.sign as jest.Mock).mockImplementation(() => {
+            throw mockError;
+        });
+
+        expect(() => createToken('12345')).toThrow('JWT failed');
+    });
+});
 
 /*****************************************
  REGISTER
@@ -28,8 +78,32 @@ describe("Email already exists", () => {
     test.todo("Email is already in use error message");
 })
 
+
+
 describe("Error handling", () => {
     test.todo("Database failure returns 500 status and error message");
+
+    test('registerUser handles createtoken throwing an error', async () => {
+        const req = mockRequest({
+            body: { email: 'test@example.com', password: 'password' }
+          });
+    
+        const res = mockResponse();
+    
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (User.create as jest.Mock).mockResolvedValue({ _id: '12345', email: 'test@example.com' });
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue('salt');
+        (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
+    
+        jest.spyOn(usersController, 'createToken').mockImplementation(() => {
+            throw new Error('Token creation failed');
+        });
+    
+        await registerUser(req, res, jest.fn());
+    
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
+    });
 })
 
 /*****************************************
