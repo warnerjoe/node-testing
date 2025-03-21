@@ -23,13 +23,13 @@ const registerUser: RequestHandler<{}, {}, UserBody> = async (req, res, next) =>
   if (!email || !password) {
     res.status(400).json({ error: 'All fields are required' });
     return;
-  }
+  };
 
   const exist = await User.findOne({ email });
   if (exist) {
     res.status(400).json({ error: 'Email is already in use' });
     return;
-  }
+  };
 
   const salt = await bcrypt.genSalt();
   const hashed = await bcrypt.hash(password, salt);
@@ -45,8 +45,8 @@ const registerUser: RequestHandler<{}, {}, UserBody> = async (req, res, next) =>
       res.status(500).json({ error: error.message });
     } else {
       res.status(500).json({ error: 'JWT failed' });
-    }
-  }
+    };
+  };
 };
 
 /*************************** LOGIN USER ***************************/
