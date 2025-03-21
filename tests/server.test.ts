@@ -9,7 +9,6 @@ test("Should start the server and connect to DB without crashing", async () => {
     const mockServer = {} as unknown as http.Server;
 
     const connectMock = mongoose.connect as jest.Mock;
-    
     connectMock.mockResolvedValueOnce({});
 
     const mockListen = jest
