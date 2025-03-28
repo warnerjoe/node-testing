@@ -2,18 +2,13 @@ import User from '../models/User';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { createToken } from '../utils/tokenUtils'; 
 import 'dotenv/config.js';
 
 interface UserBody {
   email: string;
   password: string;
 }
-
-/*************************** CREATE JSON WEB TOKEN ***************************/
-
-const createToken = (_id: string): string => {
-  return jwt.sign({ _id }, process.env.JWT_SECRET as string, { expiresIn: '10d' });
-};
 
 /*************************** REGISTER USER ***************************/
 
@@ -83,4 +78,4 @@ const loginUser: RequestHandler<{}, {}, { email: string; password: string }> = a
   }
 };
 
-export { registerUser, loginUser, createToken};
+export { registerUser, loginUser };

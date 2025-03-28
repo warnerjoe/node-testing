@@ -1,9 +1,11 @@
+process.env.JWT_SECRET = "testsecret";
+
 import jwt from 'jsonwebtoken';
-import { createToken } from '../../src/controllers/usersController';
 import bcrypt from 'bcryptjs';
 import User from '../../src/models/User';
 import * as usersController from '../../src/controllers/usersController';
-import { registerUser } from '../../src/controllers/usersController';
+import { registerUser, loginUser } from '../../src/controllers/usersController';
+import * as tokenUtils from '../../src/utils/tokenUtils';
 import { mockRequest, mockResponse } from 'jest-mock-req-res';
 import { Request, Response } from 'express';
 
@@ -63,6 +65,62 @@ describe("Token creation logic", () => {
 
 describe("Successful registration", () => {
     test.todo("Creates a new user when valid email & password are provided.");
+
+    test("Creates a new user when valid email & password are provided", async () => {
+        const mockEmail = "test@example.com";
+        const mockPassword = "SecurePassword123!";
+        const mockHashedPassword = "hashedPassword";
+
+        const req = mockRequest({
+            body: { email: mockEmail, password: mockPassword }
+        });
+
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null); 
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
+
+        await registerUser(req, res, jest.fn());
+
+        expect(User.findOne).toHaveBeenCalledWith({ email: mockEmail });
+
+        expect(bcrypt.genSalt).toHaveBeenCalled();
+        expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
+
+        expect(User.create).toHaveBeenCalledWith({
+            email: mockEmail,
+            password: mockHashedPassword
+        });
+    });
+
+    test("Generates a valid token for new user", async () => {
+        const mockUserId = "12345";
+        const mockEmail = "test@example.com";
+
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+        // Since jwt.sign is mocked to return 'mockedToken', createToken (which calls jwt.sign) should return that.
+        await registerUser(req, res, jest.fn());
+
+        // Instead of spying on createToken, check the response.
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            email: mockEmail,
+            token: "mockedToken"
+        });
+    });
+
+
+
     test.todo("Returns a 200 status code");
     test.todo("Return a valid JWT token and correct email");
 });
@@ -93,7 +151,7 @@ describe("Error handling", () => {
         (bcrypt.genSalt as jest.Mock).mockResolvedValue('salt');
         (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
     
-        jest.spyOn(usersController, 'createToken').mockImplementation(() => {
+        jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
             throw new Error('Token creation failed');
         });
     
@@ -128,6 +186,27 @@ describe("Incorrect Password", () => {
     test.todo("Incorrect password error message");
 });
 
-describe("Error Handling", () => {
-    test.todo("Token creation failure returns 500 status and error message");
+test("Token creation failure returns 500 status and error message", async () => {
+    const req = mockRequest({
+        body: { email: 'test@example.com', password: 'password' }
+    });
+
+    const res = mockResponse();
+
+    (User.findOne as jest.Mock).mockResolvedValue({
+        _id: '12345',
+        email: 'test@example.com',
+        password: 'hashedPassword',
+    });
+
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+    jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
+        throw new Error('Token creation failed');
+    });
+
+    await loginUser(req, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
 });
