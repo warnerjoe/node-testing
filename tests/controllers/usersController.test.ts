@@ -69,8 +69,6 @@ describe("Token creation logic", () => {
  ****************************************/
 
 describe("Successful registration", () => {
-    test.todo("Creates a new user when valid email & password are provided.");
-
     test("Creates a new user when valid email & password are provided", async () => {
         const mockEmail = "test@example.com";
         const mockPassword = "SecurePassword123!";
@@ -124,25 +122,183 @@ describe("Successful registration", () => {
         });
     });
 
+    test("Returns a 200 status code", async () => {
+        const mockEmail = "test@example.com";
+        const mockUserId = "12345";
 
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
 
-    test.todo("Returns a 200 status code");
-    test.todo("Return a valid JWT token and correct email");
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test("Ensures bcrypt salt and hash functions are called correctly", async () => {
+        const mockPassword = "SecurePassword123!";
+        const mockHashedPassword = "hashedPassword";
+
+        const req = mockRequest({
+            body: { email: "test@example.com", password: mockPassword }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
+        (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: "test@example.com" });
+
+        await registerUser(req, res, jest.fn());
+
+        expect(bcrypt.genSalt).toHaveBeenCalled();
+        expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
+    });
+    
+    test("Return a valid JWT token and correct email", async () => {
+        const mockEmail = "test@example.com";
+        const mockUserId = "12345";
+
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.json).toHaveBeenCalledWith({
+            email: mockEmail,
+            token: "mockedToken"
+        });
+    });
+
+    test("Ensures next() is not called on successful registration", async () => {
+        const mockEmail = "test@example.com";
+
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
+        const next = jest.fn();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+        (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: mockEmail });
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+        jest.spyOn(tokenUtils, "createToken").mockReturnValue("mockedToken");
+
+        await registerUser(req, res, next);
+
+        expect(next).not.toHaveBeenCalled();
+    });
 });
 
 describe("Check for missing fields", () => {
-    test.todo("400 status if email is missing");
-    test.todo("400 status if password is missing");
-    test.todo("Error message when field is missing");
+    test("400 status if email is missing", async () => {
+        const req = mockRequest({
+            body: { password: "SecurePassword123!" } // No email
+        });
+        const res = mockResponse();
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+    });
+
+    test("400 status if password is missing", async () => {
+        const req = mockRequest({
+            body: { email: "test@example.com" } // No password
+        });
+        const res = mockResponse();
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+    });
+    
+    test("Error message when field is missing", async () => {
+        const req = mockRequest({
+            body: {} // No email, no password
+        });
+        const res = mockResponse();
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+    });
+
 });
 
 describe("Email already exists", () => {
-    test.todo("400 status if email exists");
-    test.todo("Email is already in use error message");
+    test("400 status if email exists", async () => {
+        const mockEmail = "test@example.com";
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    test("Email is already in use error message", async () => {
+        const mockEmail = "test@example.com";
+        const req = mockRequest({
+            body: { email: mockEmail, password: "SecurePassword123!" }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.json).toHaveBeenCalledWith({ error: "Email is already in use" });
+    });
 });
 
 describe("Error handling", () => {
-    test.todo("Database failure returns 500 status and error message");
+    test("Database failure returns 500 status and error message", async () => {
+        const mockEmail = "test@example.com";
+        const mockPassword = "SecurePassword123!";
+        const req = mockRequest({
+            body: { email: mockEmail, password: mockPassword }
+        });
+        const res = mockResponse();
+
+        (User.findOne as jest.Mock).mockResolvedValue(null);
+
+        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+        (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
+
+        await registerUser(req, res, jest.fn());
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
+    });
+
 
     test('registerUser handles createtoken throwing an error', async () => {
         const req = mockRequest({
@@ -171,7 +327,7 @@ describe("Error handling", () => {
 /*****************************************
  LOGIN
  ****************************************/
- describe("Successful Login", () => {
+describe("Successful Login", () => {
     test.todo("200 status when email and password are correct");
     test.todo("Returns valid JWT and email");
 });

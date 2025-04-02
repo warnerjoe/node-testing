@@ -29,8 +29,10 @@ const registerUser: RequestHandler<{}, {}, UserBody> = async (req, res, next) =>
   const salt = await bcrypt.genSalt();
   const hashed = await bcrypt.hash(password, salt);
 
+  const sanitizedBody = { email, password: hashed };
+
   try {
-    const user = await User.create({ email, password: hashed });
+    const user = await User.create(sanitizedBody);
 
     const token = createToken(user._id.toString());
 
