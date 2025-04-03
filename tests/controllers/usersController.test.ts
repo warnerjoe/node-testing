@@ -9,6 +9,12 @@ import * as tokenUtils from '../../src/utils/tokenUtils';
 import { mockRequest, mockResponse } from 'jest-mock-req-res';
 import { Request, Response } from 'express';
 
+const mockId = '12345';
+const mockEmail = "test@example.com";
+const mockPassword = "SecurePassword123!";
+const mockHashedPassword = "hashedPassword";
+const jwtSecret = process.env.JWT_SECRET as string;
+
 /*****************************************
  JWT
  ****************************************/
@@ -20,15 +26,13 @@ jest.mock('../../src/models/User');
 jest.mock('bcryptjs');
 
 beforeEach(() => {
-  jest.restoreAllMocks();
-  jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+    jest.resetAllMocks();
 });
 
 describe("JWT - Token creation logic", () => {
     test("JWT is called with the correct parameters", () => {
-        const mockId = '12345';
-        const jwtSecret = process.env.JWT_SECRET as string;
-
         tokenUtils.createToken(mockId);
 
         expect(jwt.sign).toHaveBeenCalledWith(
@@ -39,9 +43,6 @@ describe("JWT - Token creation logic", () => {
     });
 
     test("Token contains the correct payload (_id and expiration)", () => {
-        const mockId = '12345';
-        const jwtSecret = process.env.JWT_SECRET as string;
-
         tokenUtils.createToken(mockId);
 
         const signCall = (jwt.sign as jest.Mock).mock.calls[0];
@@ -67,451 +68,426 @@ describe("JWT - Token creation logic", () => {
 /*****************************************
  REGISTER
  ****************************************/
+describe("POST /register", () => {
+    describe("Success", () => {
+        test("Creates a new user with valid email & password", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: mockPassword }
+            });
 
-describe("REGISTER - Success", () => {
-    test("Creates a new user when valid email & password are provided", async () => {
-        const mockEmail = "test@example.com";
-        const mockPassword = "SecurePassword123!";
-        const mockHashedPassword = "hashedPassword";
+            const res = mockResponse();
 
-        const req = mockRequest({
-            body: { email: mockEmail, password: mockPassword }
+            (User.findOne as jest.Mock).mockResolvedValue(null); 
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
+
+            await registerUser(req, res, jest.fn());
+
+            expect(User.findOne).toHaveBeenCalledWith({ email: mockEmail });
+
+            expect(bcrypt.genSalt).toHaveBeenCalled();
+            expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
+
+            expect(User.create).toHaveBeenCalledWith({
+                email: mockEmail,
+                password: mockHashedPassword
+            });
         });
 
-        const res = mockResponse();
+        test("Generates a valid JWT token for new user", async () => {
 
-        (User.findOne as jest.Mock).mockResolvedValue(null); 
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
 
-        await registerUser(req, res, jest.fn());
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email: mockEmail });
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
 
-        expect(User.findOne).toHaveBeenCalledWith({ email: mockEmail });
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
 
-        expect(bcrypt.genSalt).toHaveBeenCalled();
-        expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
+            await registerUser(req, res, jest.fn());
 
-        expect(User.create).toHaveBeenCalledWith({
-            email: mockEmail,
-            password: mockHashedPassword
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                email: mockEmail,
+                token: "mockedToken"
+            });
+        });
+
+        test("Returns 200 status code for successful registration", async () => {
+
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email: mockEmail });
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+
+            await registerUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(200);
+        });
+
+        test("Ensures bcrypt salt and hash functions are called correctly", async () => {
+            const req = mockRequest({
+                body: { email: "test@example.com", password: mockPassword }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
+            (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: "test@example.com" });
+
+            await registerUser(req, res, jest.fn());
+
+            expect(bcrypt.genSalt).toHaveBeenCalled();
+            expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
+        });
+        
+        test("Returns valid JWT token and email after successful registration", async () => {
+
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email: mockEmail });
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+
+            await registerUser(req, res, jest.fn());
+
+            expect(res.json).toHaveBeenCalledWith({
+                email: mockEmail,
+                token: "mockedToken"
+            });
+        });
+
+        test("Ensures next() is not called on successful registration", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+            const next = jest.fn();
+
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: mockEmail });
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+            jest.spyOn(tokenUtils, "createToken").mockReturnValue("mockedToken");
+
+            await registerUser(req, res, next);
+
+            expect(next).not.toHaveBeenCalled();
         });
     });
 
-    test("Generates a valid token for new user", async () => {
-        const mockUserId = "12345";
-        const mockEmail = "test@example.com";
+    describe("Missing Fields", () => {
+        test("Returns 400 status if email is missing", async () => {
+            const req = mockRequest({
+                body: { password: "SecurePassword123!" } // No email
+            });
+            const res = mockResponse();
 
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
+            await registerUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
         });
-        const res = mockResponse();
 
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+        test("Returns 400 status if password is missing", async () => {
+            const req = mockRequest({
+                body: { email: "test@example.com" } // No password
+            });
+            const res = mockResponse();
 
-        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+            await registerUser(req, res, jest.fn());
 
-        await registerUser(req, res, jest.fn());
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+        });
+        
+        test("Returns error message if any field is missing", async () => {
+            const req = mockRequest({
+                body: {} // No email, no password
+            });
+            const res = mockResponse();
 
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            email: mockEmail,
-            token: "mockedToken"
+            await registerUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+        });
+
+    });
+
+    describe("Email already exists", () => {
+        test("Returns 400 status if email already exists", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
+
+            await registerUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+        });
+
+        test("Returns error message if email is already in use", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
+
+            await registerUser(req, res, jest.fn());
+
+            expect(res.json).toHaveBeenCalledWith({ error: "Email is already in use" });
         });
     });
 
-    test("Returns a 200 status code", async () => {
-        const mockEmail = "test@example.com";
-        const mockUserId = "12345";
+    describe("Error handling", () => {
+        test("Returns 500 status and error message for database failures", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: mockPassword }
+            });
+            const res = mockResponse();
 
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
+            (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
+
+            (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
+
+            await registerUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
         });
-        const res = mockResponse();
 
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
 
-        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+        test('Handles createToken failure during registration', async () => {
+            const req = mockRequest({
+                body: { email: 'test@example.com', password: 'password' }
+            });
+        
+            const res = mockResponse();
+        
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+            (User.create as jest.Mock).mockResolvedValue({ _id: '12345', email: 'test@example.com' });
+            (bcrypt.genSalt as jest.Mock).mockResolvedValue('salt');
+            (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
 
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(200);
-    });
-
-    test("Ensures bcrypt salt and hash functions are called correctly", async () => {
-        const mockPassword = "SecurePassword123!";
-        const mockHashedPassword = "hashedPassword";
-
-        const req = mockRequest({
-            body: { email: "test@example.com", password: mockPassword }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
-        (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: "test@example.com" });
-
-        await registerUser(req, res, jest.fn());
-
-        expect(bcrypt.genSalt).toHaveBeenCalled();
-        expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
-    });
-    
-    test("Return a valid JWT token and correct email", async () => {
-        const mockEmail = "test@example.com";
-        const mockUserId = "12345";
-
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (User.create as jest.Mock).mockResolvedValue({ _id: mockUserId, email: mockEmail });
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
-
-        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.json).toHaveBeenCalledWith({
-            email: mockEmail,
-            token: "mockedToken"
+        
+            jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
+                throw new Error('JWT failed');
+            });
+        
+            await registerUser(req, res, jest.fn());
+        
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
         });
     });
-
-    test("Ensures next() is not called on successful registration", async () => {
-        const mockEmail = "test@example.com";
-
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-        const next = jest.fn();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (User.create as jest.Mock).mockResolvedValue({ _id: "12345", email: mockEmail });
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
-        jest.spyOn(tokenUtils, "createToken").mockReturnValue("mockedToken");
-
-        await registerUser(req, res, next);
-
-        expect(next).not.toHaveBeenCalled();
-    });
-});
-
-describe("REGISTER - Check for missing fields", () => {
-    test("400 status if email is missing", async () => {
-        const req = mockRequest({
-            body: { password: "SecurePassword123!" } // No email
-        });
-        const res = mockResponse();
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
-    });
-
-    test("400 status if password is missing", async () => {
-        const req = mockRequest({
-            body: { email: "test@example.com" } // No password
-        });
-        const res = mockResponse();
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
-    });
-    
-    test("Error message when field is missing", async () => {
-        const req = mockRequest({
-            body: {} // No email, no password
-        });
-        const res = mockResponse();
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
-    });
-
-});
-
-describe("REGISTER - Email already exists", () => {
-    test("400 status if email exists", async () => {
-        const mockEmail = "test@example.com";
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    test("Email is already in use error message", async () => {
-        const mockEmail = "test@example.com";
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.json).toHaveBeenCalledWith({ error: "Email is already in use" });
-    });
-});
-
-describe("REGISTER - Error handling", () => {
-    test("Database failure returns 500 status and error message", async () => {
-        const mockEmail = "test@example.com";
-        const mockPassword = "SecurePassword123!";
-        const req = mockRequest({
-            body: { email: mockEmail, password: mockPassword }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");
-        (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");
-
-        (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
-
-        await registerUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
-    });
-
-
-    test('registerUser handles createtoken throwing an error', async () => {
-        const req = mockRequest({
-            body: { email: 'test@example.com', password: 'password' }
-          });
-    
-        const res = mockResponse();
-    
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-        (User.create as jest.Mock).mockResolvedValue({ _id: '12345', email: 'test@example.com' });
-        (bcrypt.genSalt as jest.Mock).mockResolvedValue('salt');
-        (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-
-    
-        jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
-            throw new Error('JWT failed');
-        });
-    
-        await registerUser(req, res, jest.fn());
-    
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
-    });
-});
+})
 
 /*****************************************
  LOGIN
  ****************************************/
-describe("LOGIN - Success", () => {
-    test("200 status when email and password are correct", async () => {
-        const mockEmail = "test@example.com";
-        const mockPassword = "SecurePassword123!";
-        const mockUserId = "12345";
-        const mockHashedPassword = "hashedPassword";
+describe("POST /login", () => {
+    describe("Success", () => {
+        test("Returns 200 status when valid email and password are provided", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: mockPassword }
+            });
+            const res = mockResponse();
 
-        const req = mockRequest({
-            body: { email: mockEmail, password: mockPassword }
-        });
-        const res = mockResponse();
+            (User.findOne as jest.Mock).mockResolvedValue({
+                _id: mockId,
+                email: mockEmail,
+                password: mockHashedPassword,
+            });
 
-        (User.findOne as jest.Mock).mockResolvedValue({
-            _id: mockUserId,
-            email: mockEmail,
-            password: mockHashedPassword,
-        });
+            (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
 
-        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+            await loginUser(req, res, jest.fn());
 
-        await loginUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(200);
-    });
-
-     test("Returns valid JWT and email", async () => {
-        const mockEmail = "test@example.com";
-        const mockUserId = "12345";
-        const mockHashedPassword = "hashedPassword";
-
-        const req = mockRequest({
-            body: { email: mockEmail, password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue({
-            _id: mockUserId,
-            email: mockEmail,
-            password: mockHashedPassword,
+            expect(res.status).toHaveBeenCalledWith(200);
         });
 
-        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        test("Returns valid JWT token and email after successful login", async () => {
+            const req = mockRequest({
+                body: { email: mockEmail, password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
 
-        jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+            (User.findOne as jest.Mock).mockResolvedValue({
+                _id: mockId,
+                email: mockEmail,
+                password: mockHashedPassword,
+            });
 
-        await loginUser(req, res, jest.fn());
+            (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-        expect(res.json).toHaveBeenCalledWith({
-            email: mockEmail,
-            token: 'mockedToken',
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.json).toHaveBeenCalledWith({
+                email: mockEmail,
+                token: 'mockedToken',
+            });
         });
     });
-});
 
-describe("LOGIN - Missing Fields", () => {
-    test("400 status if email is missing", async () => {
-        const req = mockRequest({
-            body: { password: "SecurePassword123!" } // No email
+    describe("Incorrect Email", () => {
+        test("Returns 400 status if email is not found", async () => {
+            const req = mockRequest({
+                body: { email: "nonexistent@example.com", password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
         });
-        const res = mockResponse();
 
-        await loginUser(req, res, jest.fn());
+        test("Returns 'Incorrect Email' error message if email is not found", async () => {
+            const req = mockRequest({
+                body: { email: "nonexistent@example.com", password: "SecurePassword123!" }
+            });
+            const res = mockResponse();
 
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
+            (User.findOne as jest.Mock).mockResolvedValue(null);
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
+        });
     });
 
-    test("400 status if password is missing", async () => {
-        const req = mockRequest({
-            body: { email: "test@example.com" } // No password
-        });
-        const res = mockResponse();
+    describe("Incorrect Password", () => {
+        test("Returns 400 status if password does not match", async () => {
+            const req = mockRequest({
+                body: { email: "test@example.com", password: "WrongPassword123!" }
+            });
+            const res = mockResponse();
 
-        await loginUser(req, res, jest.fn());
+            (User.findOne as jest.Mock).mockResolvedValue({
+                _id: "12345",
+                email: "test@example.com",
+                password: "hashedPassword" 
+            });
 
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
-    });
-    
-    test("Returns error message if field is missing", async () => {
-        const req = mockRequest({
-            body: {} // No email, no password
-        });
-        const res = mockResponse();
+            (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-        await loginUser(req, res, jest.fn());
+            await loginUser(req, res, jest.fn());
 
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
-    });
-});
-
-describe("LOGIN - Incorrect Email", () => {
-    test("400 status when email is not found", async () => {
-        const req = mockRequest({
-            body: { email: "nonexistent@example.com", password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-
-        await loginUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
-    });
-
-    test("Incorrect email error message", async () => {
-        const req = mockRequest({
-            body: { email: "nonexistent@example.com", password: "SecurePassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue(null);
-
-        await loginUser(req, res, jest.fn());
-
-        expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
-    });
-});
-
-describe("LOGIN - Incorrect Password", () => {
-    test("400 status when password does not match", async () => {
-        const req = mockRequest({
-            body: { email: "test@example.com", password: "WrongPassword123!" }
-        });
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue({
-            _id: "12345",
-            email: "test@example.com",
-            password: "hashedPassword" 
+            expect(res.status).toHaveBeenCalledWith(400);
         });
 
-        (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+        test("Returns 'Incorrect password' error message if password does not match", async () => {
+            const req = mockRequest({
+                body: { email: "test@example.com", password: "WrongPassword123!" }
+            });
+            const res = mockResponse();
+            (User.findOne as jest.Mock).mockResolvedValue({
+                _id: "12345",
+                email: "test@example.com",
+                password: "hashedPassword" 
+            });
 
-        await loginUser(req, res, jest.fn());
+            (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-        expect(res.status).toHaveBeenCalledWith(400);
+            await loginUser(req, res, jest.fn());
+
+            expect(res.json).toHaveBeenCalledWith({ error: "Incorrect password" });
+        });
     });
 
-    test("Incorrect password error message", async () => {
-        const req = mockRequest({
-            body: { email: "test@example.com", password: "WrongPassword123!" }
+    describe("Missing Fields", () => {
+        test("Returns 400 status if email is missing", async () => {
+            const req = mockRequest({
+                body: { password: "SecurePassword123!" } // No email
+            });
+            const res = mockResponse();
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
         });
-        const res = mockResponse();
-        (User.findOne as jest.Mock).mockResolvedValue({
-            _id: "12345",
-            email: "test@example.com",
-            password: "hashedPassword" 
+
+        test("Returns 400 status if password is missing", async () => {
+            const req = mockRequest({
+                body: { email: "test@example.com" } // No password
+            });
+            const res = mockResponse();
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
         });
+        
+        test("Returns error message if any field is missing", async () => {
+            const req = mockRequest({
+                body: {} // No email, no password
+            });
+            const res = mockResponse();
 
-        (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+            await loginUser(req, res, jest.fn());
 
-        await loginUser(req, res, jest.fn());
-
-        expect(res.json).toHaveBeenCalledWith({ error: "Incorrect password" });
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
+        });
     });
-});
 
-describe("LOGIN - Error Handling", () => {
-    test("Token creation failure returns 500 status and error message", async () => {
-        const req = mockRequest({
-            body: { email: 'test@example.com', password: 'password' }
+    describe("Error Handling", () => {
+        test("Returns 500 status and error message if JWT creation fails", async () => {
+            const req = mockRequest({
+                body: { email: 'test@example.com', password: 'password' }
+            });
+
+            const res = mockResponse();
+
+            (User.findOne as jest.Mock).mockResolvedValue({
+                _id: '12345',
+                email: 'test@example.com',
+                password: 'hashedPassword',
+            });
+
+            (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+            jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
+                throw new Error('JWT failed');
+            });
+
+            await loginUser(req, res, jest.fn());
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
         });
-
-        const res = mockResponse();
-
-        (User.findOne as jest.Mock).mockResolvedValue({
-            _id: '12345',
-            email: 'test@example.com',
-            password: 'hashedPassword',
-        });
-
-        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-        jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
-            throw new Error('JWT failed');
-        });
-
-        await loginUser(req, res, jest.fn());
-
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
-    });
+    })
 })
