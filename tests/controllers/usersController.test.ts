@@ -61,7 +61,7 @@ describe("JWT - Token creation logic", () => {
             throw mockError;
         });
 
-        expect(() => tokenUtils.createToken('12345')).toThrow('JWT failed');
+        expect(() => tokenUtils.createToken(mockId)).toThrow('JWT failed');
     });
 });
 
