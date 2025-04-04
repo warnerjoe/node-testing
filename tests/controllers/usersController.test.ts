@@ -15,9 +15,6 @@ const mockPassword = "SecurePassword123!";
 const mockHashedPassword = "hashedPassword";
 const jwtSecret = process.env.JWT_SECRET as string;
 
-/*****************************************
- JWT
- ****************************************/
 jest.mock('jsonwebtoken', () => ({
     sign: jest.fn(() => 'mockedToken'),
 }));
@@ -32,9 +29,11 @@ const mockUserCreate = (email: string = mockEmail, password: string = mockPasswo
     (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email }); 
 };
 
-beforeAll(() => {
-    jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken'); // Mock token generation once for all tests
-});
+const buildReqRes = (body = {}) => {
+    const req = mockRequest({ body });
+    const res = mockResponse();
+    return { req, res };
+};
 
 beforeEach(() => {
     jest.restoreAllMocks();
@@ -43,6 +42,9 @@ beforeEach(() => {
     mockUserCreate();
 });
 
+/*****************************************
+ JWT
+ ****************************************/
 describe("JWT - Token creation logic", () => {
     test("JWT is called with the correct parameters", () => {
         tokenUtils.createToken(mockId);
@@ -56,14 +58,11 @@ describe("JWT - Token creation logic", () => {
 
     test("Token contains the correct payload (_id and expiration)", () => {
         tokenUtils.createToken(mockId);
-
         const signCall = (jwt.sign as jest.Mock).mock.calls[0];
-
         const payload = signCall[0];
         const options = signCall[2];
 
         expect(payload).toEqual({ _id: mockId });
-
         expect(options).toHaveProperty('expiresIn', '10d');
     });
 
@@ -82,15 +81,14 @@ describe("JWT - Token creation logic", () => {
  ****************************************/
 describe("POST /register", () => {
     describe("Success", () => {
-        test("Creates a new user with valid email & password", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
+        beforeEach(() => {
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+        })
 
-            const res = mockResponse();
+        test("Creates a new user with valid email & password", async () => {
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword })
 
             await registerUser(req, res, jest.fn());
-
             expect(User.findOne).toHaveBeenCalledWith({ email: mockEmail });
             expect(bcrypt.genSalt).toHaveBeenCalled();
             expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
@@ -106,9 +104,7 @@ describe("POST /register", () => {
             });
             const res = mockResponse();
 
-            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
                 email: mockEmail,
@@ -122,9 +118,7 @@ describe("POST /register", () => {
             });
             const res = mockResponse();
 
-            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(200);
         });
 
@@ -135,7 +129,6 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             await registerUser(req, res, jest.fn());
-
             expect(bcrypt.genSalt).toHaveBeenCalled();
             expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
         });
@@ -146,9 +139,7 @@ describe("POST /register", () => {
             });
             const res = mockResponse();
 
-            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
             await registerUser(req, res, jest.fn());
-
             expect(res.json).toHaveBeenCalledWith({
                 email: mockEmail,
                 token: "mockedToken"
@@ -162,9 +153,7 @@ describe("POST /register", () => {
             const res = mockResponse();
             const next = jest.fn();
 
-            jest.spyOn(tokenUtils, "createToken").mockReturnValue("mockedToken");
             await registerUser(req, res, next);
-
             expect(next).not.toHaveBeenCalled();
         });
     });
@@ -177,7 +166,6 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
         });
@@ -189,7 +177,6 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
         });
@@ -201,7 +188,6 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
         });
@@ -216,9 +202,7 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
-
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
         });
 
@@ -229,9 +213,7 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
-
             await registerUser(req, res, jest.fn());
-
             expect(res.json).toHaveBeenCalledWith({ error: "Email is already in use" });
         });
     });
@@ -244,9 +226,7 @@ describe("POST /register", () => {
             const res = mockResponse();
 
             (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
-
             await registerUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
         });
@@ -256,7 +236,6 @@ describe("POST /register", () => {
             const req = mockRequest({
                 body: { email: 'test@example.com', password: 'password' }
             });
-        
             const res = mockResponse();
         
             jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
@@ -264,7 +243,6 @@ describe("POST /register", () => {
             });
         
             await registerUser(req, res, jest.fn());
-        
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
         });
@@ -276,6 +254,10 @@ describe("POST /register", () => {
  ****************************************/
 describe("POST /login", () => {
     describe("Success", () => {
+        beforeEach(() => {
+            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
+        })
+
         test("Returns 200 status when valid email and password are provided", async () => {
             const req = mockRequest({
                 body: { email: mockEmail, password: mockPassword }
@@ -289,11 +271,7 @@ describe("POST /login", () => {
             });
 
             (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
-
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(200);
         });
 
@@ -310,11 +288,7 @@ describe("POST /login", () => {
             });
 
             (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-            jest.spyOn(tokenUtils, 'createToken').mockReturnValue('mockedToken');
-
             await loginUser(req, res, jest.fn());
-
             expect(res.json).toHaveBeenCalledWith({
                 email: mockEmail,
                 token: 'mockedToken',
@@ -330,9 +304,7 @@ describe("POST /login", () => {
             const res = mockResponse();
 
             (User.findOne as jest.Mock).mockResolvedValue(null);
-
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
         });
@@ -344,9 +316,7 @@ describe("POST /login", () => {
             const res = mockResponse();
 
             (User.findOne as jest.Mock).mockResolvedValue(null);
-
             await loginUser(req, res, jest.fn());
-
             expect(res.json).toHaveBeenCalledWith({ error: "Incorrect email" });
         });
     });
@@ -365,9 +335,7 @@ describe("POST /login", () => {
             });
 
             (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
         });
 
@@ -383,9 +351,7 @@ describe("POST /login", () => {
             });
 
             (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
             await loginUser(req, res, jest.fn());
-
             expect(res.json).toHaveBeenCalledWith({ error: "Incorrect password" });
         });
     });
@@ -398,7 +364,6 @@ describe("POST /login", () => {
             const res = mockResponse();
 
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
         });
@@ -410,7 +375,6 @@ describe("POST /login", () => {
             const res = mockResponse();
 
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
         });
@@ -422,7 +386,6 @@ describe("POST /login", () => {
             const res = mockResponse();
 
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
         });
@@ -433,7 +396,6 @@ describe("POST /login", () => {
             const req = mockRequest({
                 body: { email: 'test@example.com', password: 'password' }
             });
-
             const res = mockResponse();
 
             (User.findOne as jest.Mock).mockResolvedValue({
@@ -443,13 +405,10 @@ describe("POST /login", () => {
             });
 
             (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
             jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
                 throw new Error('JWT failed');
             });
-
             await loginUser(req, res, jest.fn());
-
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
         });
