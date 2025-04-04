@@ -7,7 +7,7 @@ import * as usersController from '../../src/controllers/usersController';
 import { registerUser, loginUser } from '../../src/controllers/usersController';
 import * as tokenUtils from '../../src/utils/tokenUtils';
 import { mockRequest, mockResponse } from 'jest-mock-req-res';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 const mockId = '12345';
 const mockEmail = "test@example.com";
@@ -22,6 +22,7 @@ jest.mock('jsonwebtoken', () => ({
 jest.mock('../../src/models/User');
 jest.mock('bcryptjs');
 
+// Helper function to create user from all of the variables above
 const mockUserCreate = (email: string = mockEmail, password: string = mockPassword) => {
     (User.findOne as jest.Mock).mockResolvedValue(null);  
     (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");  
@@ -29,11 +30,24 @@ const mockUserCreate = (email: string = mockEmail, password: string = mockPasswo
     (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email }); 
 };
 
-// const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
+// Helper function to take the body in, and return the request and response. To use: const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 const buildReqRes = (body = {}) => {
     const req = mockRequest({ body });
     const res = mockResponse();
     return { req, res };
+};
+
+// Helper function to test a (controller, req, res, status, message) and return an error.
+const expectErrorResponse = async (
+    controller: (req: Request, res: Response, next: NextFunction) => void | Promise<void>, 
+    req: Request, 
+    res: Response, 
+    expectedStatus: number, 
+    expectedMessage: string
+) => {
+    await Promise.resolve(controller(req, res, jest.fn())); // Ensure handling both sync/async cases
+    expect(res.status).toHaveBeenCalledWith(expectedStatus);
+    expect(res.json).toHaveBeenCalledWith({ error: expectedMessage });
 };
 
 beforeEach(() => {
@@ -147,26 +161,17 @@ describe("POST /register", () => {
     describe("Missing Fields", () => {
         test("Returns 400 status if email is missing", async () => {
             const { req, res } = buildReqRes({ password: mockPassword }); // No email, only password
-
-            await registerUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+            await expectErrorResponse(registerUser, req, res, 400, "All fields are required.");
         });
 
         test("Returns 400 status if password is missing", async () => {
             const { req, res } = buildReqRes({ email: mockEmail }); // No password, only email
-
-            await registerUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+            await expectErrorResponse(registerUser, req, res, 400, "All fields are required.");
         });
         
         test("Returns error message if any field is missing", async () => {
             const { req, res } = buildReqRes({});
-
-            await registerUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required" });
+            await expectErrorResponse(registerUser, req, res, 400, "All fields are required.");
         });
 
     });
@@ -194,9 +199,8 @@ describe("POST /register", () => {
             const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
-            await registerUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
+
+            await expectErrorResponse(registerUser, req, res, 500, "Database error");
         });
 
 
@@ -207,9 +211,7 @@ describe("POST /register", () => {
                 throw new Error('JWT failed');
             });
         
-            await registerUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
+            await expectErrorResponse(registerUser, req, res, 500, "JWT failed");
         });
     });
 })
@@ -306,26 +308,17 @@ describe("POST /login", () => {
     describe("Missing Fields", () => {
         test("Returns 400 status if email is missing", async () => {
             const { req, res } = buildReqRes({ password: mockPassword }); // No email
-
-            await loginUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
+            await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
         });
 
         test("Returns 400 status if password is missing", async () => {
             const { req, res } = buildReqRes({ email: mockEmail }); // No password
-
-            await loginUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
+            await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
         });
         
         test("Returns error message if any field is missing", async () => {
             const { req, res } = buildReqRes({}); // No email or password
-
-            await loginUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: "All fields are required." });
+            await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
         });
     });
 
@@ -343,9 +336,8 @@ describe("POST /login", () => {
             jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
                 throw new Error('JWT failed');
             });
-            await loginUser(req, res, jest.fn());
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'JWT failed' });
+            
+            await expectErrorResponse(loginUser, req, res, 500, "JWT failed");
         });
     })
 })
