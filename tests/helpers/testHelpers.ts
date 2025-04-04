@@ -1,7 +1,6 @@
 import { mockRequest, mockResponse } from 'jest-mock-req-res';
 import { Request, Response, NextFunction } from 'express';
 import * as tokenUtils from '../../src/utils/tokenUtils'; 
-import User from '../../src/models/User';
 
 // Helper function to create user from all of the variables above
 export const mockUserCreate = (User: any, bcrypt: any, email: string = 'test@example.com', password: string = 'SecurePassword123!') => {
@@ -26,7 +25,7 @@ export const expectErrorResponse = async (
     expectedStatus: number, 
     expectedMessage: string
 ) => {
-    await Promise.resolve(controller(req, res, jest.fn())); // Ensure handling both sync/async cases
+    await Promise.resolve(controller(req, res, jest.fn())); 
     expect(res.status).toHaveBeenCalledWith(expectedStatus);
     expect(res.json).toHaveBeenCalledWith({ error: expectedMessage });
 };

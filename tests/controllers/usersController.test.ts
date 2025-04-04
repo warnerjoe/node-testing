@@ -1,25 +1,16 @@
-process.env.JWT_SECRET = "testsecret";
-
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../../src/models/User';
-import * as usersController from '../../src/controllers/usersController';
-import { registerUser, loginUser } from '../../src/controllers/usersController';
 import * as tokenUtils from '../../src/utils/tokenUtils';
-import { mockRequest, mockResponse } from 'jest-mock-req-res';
-import { Request, Response, NextFunction } from 'express';
-import { mockUserCreate, buildReqRes, expectErrorResponse, createMockedToken } from '../helpers/testHelpers';
+import { mockUserCreate } from '../helpers/testHelpers';
 
-const mockId = '12345';
-const mockEmail = "test@example.com";
-const mockPassword = "SecurePassword123!";
-const mockHashedPassword = "hashedPassword";
+process.env.JWT_SECRET = "testsecret";
 const jwtSecret = process.env.JWT_SECRET as string;
+const mockId = '12345';
 
 jest.mock('jsonwebtoken', () => ({
     sign: jest.fn(() => 'mockedToken'),
 }));
-
 jest.mock('../../src/models/User');
 jest.mock('bcryptjs');
 

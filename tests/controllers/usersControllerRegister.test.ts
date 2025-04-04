@@ -1,19 +1,12 @@
-// REGISTER
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../../src/models/User';
-import * as usersController from '../../src/controllers/usersController';
-import { registerUser, loginUser } from '../../src/controllers/usersController';
+import { registerUser } from '../../src/controllers/usersController';
 import * as tokenUtils from '../../src/utils/tokenUtils';
-import { mockRequest, mockResponse } from 'jest-mock-req-res';
-import { Request, Response, NextFunction } from 'express';
-import { mockUserCreate, buildReqRes, expectErrorResponse, createMockedToken } from '../helpers/testHelpers';
+import { mockUserCreate, buildReqRes, expectErrorResponse } from '../helpers/testHelpers';
 
-const mockId = '12345';
 const mockEmail = "test@example.com";
 const mockPassword = "SecurePassword123!";
 const mockHashedPassword = "hashedPassword";
-const jwtSecret = process.env.JWT_SECRET as string;
 
 jest.mock('jsonwebtoken', () => ({
     sign: jest.fn(() => 'mockedToken'),
