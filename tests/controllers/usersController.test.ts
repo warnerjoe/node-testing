@@ -29,6 +29,7 @@ const mockUserCreate = (email: string = mockEmail, password: string = mockPasswo
     (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email }); 
 };
 
+// const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 const buildReqRes = (body = {}) => {
     const req = mockRequest({ body });
     const res = mockResponse();
@@ -99,10 +100,7 @@ describe("POST /register", () => {
         });
 
         test("Generates a valid JWT token for new user", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             await registerUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(200);
@@ -113,20 +111,14 @@ describe("POST /register", () => {
         });
 
         test("Returns 200 status code for successful registration", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             await registerUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(200);
         });
 
         test("Ensures bcrypt salt and hash functions are called correctly", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             await registerUser(req, res, jest.fn());
             expect(bcrypt.genSalt).toHaveBeenCalled();
@@ -134,10 +126,7 @@ describe("POST /register", () => {
         });
         
         test("Returns valid JWT token and email after successful registration", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             await registerUser(req, res, jest.fn());
             expect(res.json).toHaveBeenCalledWith({
@@ -147,10 +136,7 @@ describe("POST /register", () => {
         });
 
         test("Ensures next() is not called on successful registration", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
             const next = jest.fn();
 
             await registerUser(req, res, next);
@@ -160,10 +146,7 @@ describe("POST /register", () => {
 
     describe("Missing Fields", () => {
         test("Returns 400 status if email is missing", async () => {
-            const req = mockRequest({
-                body: { password: mockPassword } // No email
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ password: mockPassword }); // No email, only password
 
             await registerUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -171,10 +154,7 @@ describe("POST /register", () => {
         });
 
         test("Returns 400 status if password is missing", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail } // No password
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail }); // No password, only email
 
             await registerUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -182,10 +162,7 @@ describe("POST /register", () => {
         });
         
         test("Returns error message if any field is missing", async () => {
-            const req = mockRequest({
-                body: {} // No email, no password
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({});
 
             await registerUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -196,10 +173,7 @@ describe("POST /register", () => {
 
     describe("Email already exists", () => {
         test("Returns 400 status if email already exists", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
             await registerUser(req, res, jest.fn());
@@ -207,10 +181,7 @@ describe("POST /register", () => {
         });
 
         test("Returns error message if email is already in use", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockId }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
             await registerUser(req, res, jest.fn());
@@ -220,10 +191,7 @@ describe("POST /register", () => {
 
     describe("Error handling", () => {
         test("Returns 500 status and error message for database failures", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.create as jest.Mock).mockRejectedValue(new Error("Database error"));
             await registerUser(req, res, jest.fn());
@@ -233,10 +201,7 @@ describe("POST /register", () => {
 
 
         test('Handles createToken failure during registration', async () => {
-            const req = mockRequest({
-                body: { email: 'test@example.com', password: 'password' }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
         
             jest.spyOn(tokenUtils, 'createToken').mockImplementation(() => {
                 throw new Error('JWT failed');
@@ -259,10 +224,7 @@ describe("POST /login", () => {
         })
 
         test("Returns 200 status when valid email and password are provided", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockPassword }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue({
                 _id: mockId,
@@ -276,10 +238,7 @@ describe("POST /login", () => {
         });
 
         test("Returns valid JWT token and email after successful login", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: mockId }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue({
                 _id: mockId,
@@ -298,10 +257,7 @@ describe("POST /login", () => {
 
     describe("Incorrect Email", () => {
         test("Returns 400 status if email is not found", async () => {
-            const req = mockRequest({
-                body: { email: "nonexistent@example.com", password: mockId }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: 'otherEmail@email.com', password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue(null);
             await loginUser(req, res, jest.fn());
@@ -310,10 +266,7 @@ describe("POST /login", () => {
         });
 
         test("Returns 'Incorrect Email' error message if email is not found", async () => {
-            const req = mockRequest({
-                body: { email: "nonexistent@example.com", password: mockId }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: 'otherEmail@email.com', password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue(null);
             await loginUser(req, res, jest.fn());
@@ -323,13 +276,10 @@ describe("POST /login", () => {
 
     describe("Incorrect Password", () => {
         test("Returns 400 status if password does not match", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: "WrongPassword123!" }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: 'WrongPassword123!' });
 
             (User.findOne as jest.Mock).mockResolvedValue({
-                _id: "12345",
+                _id: mockId,
                 email: mockEmail,
                 password: mockHashedPassword 
             });
@@ -340,12 +290,9 @@ describe("POST /login", () => {
         });
 
         test("Returns 'Incorrect password' error message if password does not match", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail, password: "WrongPassword123!" }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: 'WrongPassword123!' });
             (User.findOne as jest.Mock).mockResolvedValue({
-                _id: "12345",
+                _id: mockId,
                 email: mockEmail,
                 password: mockHashedPassword 
             });
@@ -358,10 +305,7 @@ describe("POST /login", () => {
 
     describe("Missing Fields", () => {
         test("Returns 400 status if email is missing", async () => {
-            const req = mockRequest({
-                body: { password: mockId } // No email
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ password: mockPassword }); // No email
 
             await loginUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -369,10 +313,7 @@ describe("POST /login", () => {
         });
 
         test("Returns 400 status if password is missing", async () => {
-            const req = mockRequest({
-                body: { email: mockEmail } // No password
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail }); // No password
 
             await loginUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -380,10 +321,7 @@ describe("POST /login", () => {
         });
         
         test("Returns error message if any field is missing", async () => {
-            const req = mockRequest({
-                body: {} // No email, no password
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({}); // No email or password
 
             await loginUser(req, res, jest.fn());
             expect(res.status).toHaveBeenCalledWith(400);
@@ -393,10 +331,7 @@ describe("POST /login", () => {
 
     describe("Error Handling", () => {
         test("Returns 500 status and error message if JWT creation fails", async () => {
-            const req = mockRequest({
-                body: { email: 'test@example.com', password: 'password' }
-            });
-            const res = mockResponse();
+            const { req, res } = buildReqRes({ email: mockEmail, password: mockPassword });
 
             (User.findOne as jest.Mock).mockResolvedValue({
                 _id: mockId,
