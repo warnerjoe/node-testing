@@ -21,9 +21,6 @@ beforeEach(() => {
     mockUserCreate(User, bcrypt);
 });
 
-/*****************************************
- JWT
- ****************************************/
 describe("JWT - Token creation logic", () => {
     test("JWT is called with the correct parameters", () => {
         tokenUtils.createToken(mockId);
