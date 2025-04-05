@@ -61,20 +61,22 @@ describe("POST /login", () => {
     });
 
     describe("Missing Fields", () => {
-        test("Returns 400 status if email is missing", async () => {
-            const { req, res } = mockLoginSetup(undefined, mockPassword); // No email
-            await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
-        });
+        type TestCase = {
+            name: string;
+            email?: string;
+            password?: string;
+        };
 
-        test("Returns 400 status if password is missing", async () => {
-            const { req, res } = mockLoginSetup(mockEmail, undefined); // No password
+        const cases: TestCase[] = [
+            { name: "email is missing", password: mockPassword },
+            { name: "password is missing", email:  mockEmail },
+            { name: "all fields are missing"},
+        ]
+
+        test.each(cases)("Returns error message when $name", async ({ email, password }) => {
+            const { req, res } = mockLoginSetup(email, password);
             await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
-        });
-        
-        test("Returns error message if any field is missing", async () => {
-            const { req, res } = mockLoginSetup(); // No email or password
-            await expectErrorResponse(loginUser, req, res, 400, "All fields are required.");
-        });
+        })
     });
 
     describe("Error Handling", () => {

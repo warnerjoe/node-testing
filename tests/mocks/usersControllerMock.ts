@@ -1,6 +1,6 @@
 import User from '../../src/models/User';
 import bcrypt from 'bcryptjs';
-import { mockUser, mockId, mockHashedPassword } from '../helpers/testConstants';
+import { mockUser, mockId, mockHashedPassword, mockEmail } from '../helpers/testConstants';
 import { buildReqRes } from '../helpers/testHelpers';
 
 export const registerUserMock = jest.fn((req, res) => res.status(200).json({ message: 'Mocked registerUser' }));
@@ -44,4 +44,8 @@ export const mockLoginSetup = (email?: string, password?: string, user?: any) =>
   }
 
   return { req, res };
+};
+
+export const mockEmailAlreadyExists = () => {
+    (User.findOne as jest.Mock).mockResolvedValue({ email: mockEmail });
 };
