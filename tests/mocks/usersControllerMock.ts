@@ -14,8 +14,8 @@ export const mockUsersController = {
 export const mockUserCreate = (User: any, bcrypt: any, email: string = 'test@example.com', password: string = 'SecurePassword123!') => {
   (User.findOne as jest.Mock).mockResolvedValue(null);  
   (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");  
-  (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");  
-  (User.create as jest.Mock).mockResolvedValue({ _id: '12345', email });
+  (bcrypt.hash as jest.Mock).mockResolvedValue(mockHashedPassword);  
+  (User.create as jest.Mock).mockResolvedValue({ _id: mockId, email });
 };
 
 export const mockSuccessfulLogin = () => {

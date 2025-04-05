@@ -39,8 +39,7 @@ export const expectPasswordHashCalled = () => {
     expect(bcrypt.hash).toHaveBeenCalledWith(mockPassword, "salt");
 };
 
-// Helper function for creating JWT tokens (moved from test files)
+// Helper function for creating mock JWT tokens
 export const createMockedToken = (id: string) => {
     return tokenUtils.createToken(id);
 };
-

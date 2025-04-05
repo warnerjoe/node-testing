@@ -22,32 +22,33 @@ beforeEach(() => {
 });
 
 describe("JWT - Token creation logic", () => {
-    test("JWT is called with the correct parameters", () => {
-        tokenUtils.createToken(mockId);
+    describe("Success", () => {
+        test("JWT creates token containing the correct payload (_id and expiration)", () => {
+            tokenUtils.createToken(mockId);
 
-        expect(jwt.sign).toHaveBeenCalledWith(
-            { _id: mockId },
-            jwtSecret,
-            { expiresIn: '10d' }
-        );
-    });
+            expect(jwt.sign).toHaveBeenCalledWith(
+                { _id: mockId },
+                jwtSecret,
+                { expiresIn: '10d' }
+            );
 
-    test("Token contains the correct payload (_id and expiration)", () => {
-        tokenUtils.createToken(mockId);
-        const signCall = (jwt.sign as jest.Mock).mock.calls[0];
-        const payload = signCall[0];
-        const options = signCall[2];
+            const signCall = (jwt.sign as jest.Mock).mock.calls[0];
+            const payload = signCall[0];
+            const options = signCall[2];
 
-        expect(payload).toEqual({ _id: mockId });
-        expect(options).toHaveProperty('expiresIn', '10d');
-    });
-
-    test("Handles jwt.sign throwing an error gracefully", () => {
-        const mockError = new Error('JWT failed');
-        (jwt.sign as jest.Mock).mockImplementation(() => {
-            throw mockError;
+            expect(payload).toEqual({ _id: mockId });
+            expect(options).toHaveProperty('expiresIn', '10d');
         });
+    });
 
-        expect(() => tokenUtils.createToken(mockId)).toThrow('JWT failed');
+    describe("Failure", () => {
+        test("Handles jwt.sign throwing an error gracefully", () => {
+            const mockError = new Error('JWT failed');
+            (jwt.sign as jest.Mock).mockImplementation(() => {
+                throw mockError;
+            });
+
+            expect(() => tokenUtils.createToken(mockId)).toThrow('JWT failed');
+        });
     });
 });
