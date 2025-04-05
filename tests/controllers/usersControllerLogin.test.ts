@@ -4,7 +4,7 @@ import { loginUser } from '../../src/controllers/usersController';
 import * as tokenUtils from '../../src/utils/tokenUtils';
 import { expectErrorResponse } from '../helpers/testHelpers';
 import { mockUserCreate, mockUserFound, mockPasswordMatch, mockLoginSetup } from '../mocks/usersControllerMock';
-import { mockId, mockEmail, mockPassword, mockHashedPassword, mockUser } from '../helpers/testConstants';
+import { mockEmail, mockPassword, mockUser } from '../helpers/testConstants';
 import { Request, Response } from 'express';
 let req: Request, res: Response;
 
