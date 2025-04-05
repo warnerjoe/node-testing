@@ -2,11 +2,11 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../../src/models/User';
 import * as tokenUtils from '../../src/utils/tokenUtils';
-import { mockUserCreate } from '../helpers/testHelpers';
-
-process.env.JWT_SECRET = "testsecret";
-const jwtSecret = process.env.JWT_SECRET as string;
-const mockId = '12345';
+import { mockUserCreate } from '../mocks/usersControllerMock';
+import {
+    mockId,
+    jwtSecret
+} from '../helpers/testConstants';
 
 jest.mock('jsonwebtoken', () => ({
     sign: jest.fn(() => 'mockedToken'),

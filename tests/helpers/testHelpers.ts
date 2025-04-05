@@ -2,14 +2,6 @@ import { mockRequest, mockResponse } from 'jest-mock-req-res';
 import { Request, Response, NextFunction } from 'express';
 import * as tokenUtils from '../../src/utils/tokenUtils'; 
 
-// Helper function to create user from all of the variables above
-export const mockUserCreate = (User: any, bcrypt: any, email: string = 'test@example.com', password: string = 'SecurePassword123!') => {
-    (User.findOne as jest.Mock).mockResolvedValue(null);  
-    (bcrypt.genSalt as jest.Mock).mockResolvedValue("salt");  
-    (bcrypt.hash as jest.Mock).mockResolvedValue("hashedPassword");  
-    (User.create as jest.Mock).mockResolvedValue({ _id: '12345', email });
-};
-
 // Helper function to take the body in, and return the request and response
 export const buildReqRes = (body = {}) => {
     const req = mockRequest({ body });
@@ -34,3 +26,4 @@ export const expectErrorResponse = async (
 export const createMockedToken = (id: string) => {
     return tokenUtils.createToken(id);
 };
+

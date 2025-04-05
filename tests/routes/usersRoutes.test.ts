@@ -1,6 +1,6 @@
 import express from 'express';
 import request from 'supertest';
-import mockUsersController, { registerUserMock, loginUserMock } from '../mocks/usersControllerMock';
+import { mockUsersController, registerUserMock, loginUserMock } from '../mocks/usersControllerMock';
 
 jest.mock('../../src/controllers/usersController', () => mockUsersController);
 

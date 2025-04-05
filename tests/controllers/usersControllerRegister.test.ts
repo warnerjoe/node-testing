@@ -2,11 +2,9 @@ import bcrypt from 'bcryptjs';
 import User from '../../src/models/User';
 import { registerUser } from '../../src/controllers/usersController';
 import * as tokenUtils from '../../src/utils/tokenUtils';
-import { mockUserCreate, buildReqRes, expectErrorResponse } from '../helpers/testHelpers';
-
-const mockEmail = "test@example.com";
-const mockPassword = "SecurePassword123!";
-const mockHashedPassword = "hashedPassword";
+import { buildReqRes, expectErrorResponse } from '../helpers/testHelpers';
+import { mockEmail, mockPassword, mockHashedPassword } from '../helpers/testConstants';
+import { mockUserCreate } from '../mocks/usersControllerMock';
 
 jest.mock('jsonwebtoken', () => ({
     sign: jest.fn(() => 'mockedToken'),
