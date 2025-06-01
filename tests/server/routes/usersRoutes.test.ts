@@ -1,10 +1,10 @@
 import express from 'express';
 import request from 'supertest';
-import { mockUsersController, registerUserMock, loginUserMock } from '../mocks/usersControllerMock';
+import { mockUsersController, registerUserMock, loginUserMock } from '../../mocks/usersControllerMock';
 
-jest.mock('../../src/controllers/usersController', () => mockUsersController);
+jest.mock('../../../src/server/controllers/usersController', () => mockUsersController);
 
-import usersRouter from '../../src/routes/usersRoutes';
+import usersRouter from '../../../src/server/routes/usersRoutes';
 
 const app = express();
 app.use(express.json());

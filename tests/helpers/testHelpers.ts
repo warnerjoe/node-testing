@@ -1,6 +1,6 @@
 import { mockRequest, mockResponse } from 'jest-mock-req-res';
 import { Request, Response, NextFunction } from 'express';
-import * as tokenUtils from '../../src/utils/tokenUtils'; 
+import * as tokenUtils from '../../src/server/utils/tokenUtils'; 
 import { mockEmail, mockPassword } from '../helpers/testConstants';
 import bcrypt from 'bcryptjs';
 

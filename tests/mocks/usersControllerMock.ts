@@ -1,4 +1,4 @@
-import User from '../../src/models/User';
+import User from '../../src/server/models/User';
 import bcrypt from 'bcryptjs';
 import { mockUser, mockId, mockHashedPassword, mockEmail } from '../helpers/testConstants';
 import { buildReqRes } from '../helpers/testHelpers';

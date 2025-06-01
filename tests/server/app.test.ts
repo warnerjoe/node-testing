@@ -1,8 +1,8 @@
 import request from "supertest";
 import express, { Router, Request, Response } from "express";
-import app from "../src/app";
+import app from "../../src/server/app";
 
-jest.mock("../src/routes/usersRoutes", () => {
+jest.mock("../../src/server/routes/usersRoutes", () => {
   const router = express.Router();
 
   router.get("/", (req: Request, res: Response) => {
